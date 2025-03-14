@@ -25,7 +25,7 @@ def check_mnemonic(mnemonic_words):
 
 def parallel_search(batch_size=1000):
     """Parallelized mnemonic phrase search."""
-    word_combinations = product(BIP39_WORDLIST, repeat=12)
+    word_combinations = product(bip39_wordlist, repeat=12)
     
     with concurrent.futures.ProcessPoolExecutor() as executor:
         while True:
