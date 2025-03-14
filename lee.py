@@ -1,13 +1,3 @@
-import os
-import concurrent.futures
-from itertools import product
-from bip_utils import Bip39SeedGenerator, Bip44, Bip44Coins, Bip44Changes
-from eth_utils import to_checksum_address
-from web3 import Web3
-
-# Load BIP-39 wordlist
-with open("bip39_wordlist.txt", "r") as f:
-    BIP39_WORDLIST = [word.strip() for word in f.readlines()]
 
 # Load target Ethereum addresses
 with open("ethrichlist.txt", "r") as f:
