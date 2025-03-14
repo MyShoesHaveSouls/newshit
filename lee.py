@@ -1,4 +1,17 @@
 from itertools import product, islice
+import os
+
+# Get the absolute path to the script directory
+SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
+WORDLIST_PATH = os.path.join(SCRIPT_DIR, "bip39_wordlist.txt")
+
+# Ensure the wordlist file exists
+if not os.path.exists(WORDLIST_PATH):
+    raise FileNotFoundError(f"Error: bip39_wordlist.txt not found at {WORDLIST_PATH}")
+
+# Load BIP-39 wordlist
+with open(WORDLIST_PATH, "r") as f:
+    BIP39_WORDLIST = [word.strip() for word in f.readlines()]
 
 # Load target Ethereum addresses
 with open("ethrichlist.txt", "r") as f:
