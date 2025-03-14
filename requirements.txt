@@ -2,4 +2,4 @@ bip-utils
 eth-utils
 web3
 concurrent-log-handler
-web3
+concurrent
