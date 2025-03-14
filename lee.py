@@ -1,3 +1,4 @@
+from itertools import product, islice
 
 # Load target Ethereum addresses
 with open("ethrichlist.txt", "r") as f:
