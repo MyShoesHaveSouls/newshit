@@ -1,5 +1,5 @@
-bip-utils
-eth-utils
 web3
-concurrent-log-handler
-concurrent
+eth-account
+aiohttp
+aiofiles
+
