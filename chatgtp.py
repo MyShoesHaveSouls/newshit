@@ -23,7 +23,7 @@ def generate_eth_address(mnemonic):
     return address.lower(), priv_key
 
 def main():
-    target_addresses = load_target_addresses("ethrichlist.txt")
+    target_addresses = load_target_addresses("bip39_wordlist.txt")
     if not target_addresses:
         print("⚠️ No target addresses loaded. Exiting.")
         return
