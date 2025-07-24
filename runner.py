@@ -1,93 +1,68 @@
-import time
 import threading
+import time
 from mnemonic import Mnemonic
+from bip_utils import Bip39SeedGenerator, Bip44, Bip44Coins
 from eth_utils import to_checksum_address
-from bip32utils import BIP32Key
-import hashlib
 
-# Load rich list addresses (assumed checksummed)
+# Load rich list addresses into a set for fast lookup
 with open("ethrichlist.txt", "r") as f:
-    richlist = set(line.strip() for line in f if line.strip())
+    richlist = set(line.strip().lower() for line in f if line.strip())
 
 mnemo = Mnemonic("english")
-
-# Stats
-total_keys = 0
-hits_found = 0
 lock = threading.Lock()
 
+total_keys = 0
+hits_found = 0
+running = True
+
 def mnemonic_to_eth_address(mnemonic_phrase):
-    # Convert mnemonic to seed
-    seed = mnemo.to_seed(mnemonic_phrase)
-    
-    # Derive private key (using BIP32 with Ethereum path m/44'/60'/0'/0/0)
-    master_key = BIP32Key.fromEntropy(seed)
-    child_key = master_key.ChildKey(44 + 0x80000000) \
-                          .ChildKey(60 + 0x80000000) \
-                          .ChildKey(0 + 0x80000000) \
-                          .ChildKey(0) \
-                          .ChildKey(0)
-    private_key_bytes = child_key.PrivateKey()
-    
-    # Get public key (uncompressed)
-    public_key = child_key.PublicKey()
-    
-    # Ethereum address = last 20 bytes of keccak256(public_key[1:])
-    keccak_hash = hashlib.new('keccak_256')
-    keccak_hash.update(public_key[1:])
-    address_bytes = keccak_hash.digest()[-20:]
-    
-    # Convert to hex and apply checksum
-    address = to_checksum_address('0x' + address_bytes.hex())
-    return address
+    seed_bytes = Bip39SeedGenerator(mnemonic_phrase).Generate()
+    bip44_mst = Bip44.FromSeed(seed_bytes, Bip44Coins.ETHEREUM)
+    addr = bip44_mst.Purpose().Coin().Account(0).Change(0).AddressIndex(0).PublicKey().ToAddress()
+    return to_checksum_address(addr)
 
 def worker():
     global total_keys, hits_found
-    while True:
-        # Generate 12 word mnemonic
+    while running:
         phrase = mnemo.generate(strength=128)  # 12 words
-        
         try:
             address = mnemonic_to_eth_address(phrase)
         except Exception as e:
-            continue  # If error in derivation, skip
-        
+            print(f"Error deriving address: {e}")
+            continue
+
         with lock:
             total_keys += 1
-            if address in richlist:
+            if address.lower() in richlist:
                 hits_found += 1
-                print(f"*** HIT! Address: {address} Phrase: {phrase}")
+                print(f"\n*** HIT! Address: {address} | Phrase: {phrase}\n")
                 with open("matches.txt", "a") as f:
                     f.write(f"{address} | {phrase}\n")
 
-def stats_printer():
+def print_stats():
     global total_keys, hits_found
-    prev = 0
-    while True:
-        time.sleep(5)
+    last_total = 0
+    while running:
+        time.sleep(1)
         with lock:
-            current = total_keys
-            keys_per_sec = (current - prev) / 5
-            prev = current
-            print(f"Keys/sec: {keys_per_sec:.2f} | Total Keys: {total_keys} | Hits: {hits_found}")
+            keys_this_sec = total_keys - last_total
+            last_total = total_keys
+            print(f"Keys/sec: {keys_this_sec:.2f} | Total Keys: {total_keys} | Hits: {hits_found}", end="\r")
 
 if __name__ == "__main__":
-    import multiprocessing
-    
-    num_threads = multiprocessing.cpu_count()
+    num_threads = 8  # Adjust to your CPU cores or preference
     print(f"Starting with {num_threads} threads...")
-    
-    # Start stats printer thread
-    threading.Thread(target=stats_printer, daemon=True).start()
-    
-    # Start worker threads
+
     threads = []
     for _ in range(num_threads):
-        t = threading.Thread(target=worker)
-        t.daemon = True
+        t = threading.Thread(target=worker, daemon=True)
         t.start()
         threads.append(t)
-    
-    # Keep main alive
-    for t in threads:
-        t.join()
+
+    try:
+        print_stats()
+    except KeyboardInterrupt:
+        print("\nStopping...")
+        running = False
+        for t in threads:
+            t.join()
