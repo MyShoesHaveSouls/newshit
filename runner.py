@@ -1,7 +1,7 @@
 import threading
 import time
 from mnemonic import Mnemonic
-from bip_utils import Bip39SeedGenerator, Bip44, Bip44Coins
+from bip_utils import Bip39SeedGenerator, Bip44, Bip44Coins, Bip44Changes
 from eth_utils import to_checksum_address
 
 # Load rich list addresses into a set for fast lookup
@@ -18,7 +18,8 @@ running = True
 def mnemonic_to_eth_address(mnemonic_phrase):
     seed_bytes = Bip39SeedGenerator(mnemonic_phrase).Generate()
     bip44_mst = Bip44.FromSeed(seed_bytes, Bip44Coins.ETHEREUM)
-    addr = bip44_mst.Purpose().Coin().Account(0).Change(0).AddressIndex(0).PublicKey().ToAddress()
+    # Correct usage of Change with Bip44Changes enum
+    addr = bip44_mst.Purpose().Coin().Account(0).Change(Bip44Changes.CHAIN_EXT).AddressIndex(0).PublicKey().ToAddress()
     return to_checksum_address(addr)
 
 def worker():
